@@ -1,22 +1,59 @@
 <html>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 </head>
 <body onload='init()'>
 
-Hello world?
-
-<svg width=400 height=400>
+<svg>
 </svg>
 <script>
 async function init() {
-  const data = await d3.csv("https://flunky.github.io/cars2017.csv");
+  const data = await d3.csv("https://raw.githubusercontent.com/mdmuiuc/mdmuiuc.github.io/master/covid_data.csv", function(d) {
+    var dateParts = d.dateRep.split("/");
+    
+    return {
+      cases: d.cases,
+      continent: d.continentExp,
+      date: new Date(+dateParts[2], dateParts[1] - 1, +dateParts[0]),
+      deaths: d.deaths,
+      population: d.population
+    };
+  });
+  const dataByCountry = d3.nest()
+    .key(function(d) { return d.continent; })
+    .key(function(d) { return d.date; })
+    .rollup(function(v) { return {
+      cases: d3.sum(v, function(d) { return d.cases; }),
+      deaths: d3.sum(v, function(d) { return d.deaths; }),
+      deathsPerCapita: d3.sum(v, function(d) { return d.deaths; })/
+                       d3.sum(v, function(d) { return d.population; })
+      }; 
+    })
+    .entries(data);
   
-  var margin = 50;
-  var x = d3.scaleLog().domain([10,150]).range([0,200]);
-  var y = d3.scaleLog().domain([10,150]).range([200,0]);
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+  var widthMargin = 50;//.1*width;
+  var heightMargin = 50;//.1*height;
+  var x = d3.scaleUtc().domain(d3.extent(data, d => d.date)).range([0,width-2*widthMargin]);
+  var yCases = d3.scaleLinear().domain([0, 500]).range([height-2*heightMargin,0]);
+  var yDeaths = d3.scaleLinear().domain([0, 500]).range([height-2*heightMargin,0]);
+  var yDeathsPerCapita = d3.scaleLinear().domain([0, 500]).range([height-2*widthMargin,0]);
   
-  d3.select("svg")
+  var caseLine = d3.line()
+    .x(d => x(d.values.key))
+    .y(d => y(d.values.cases));
+    
+  var deathLine = d3.line()
+    .x(d => x(d.date))
+    .y(d => yDeaths(d.deaths));
+    
+  var casesPerCapitaLine = d3.line()
+    .x(d => x(d.date))
+    .y(d => yDeathsPerCapita(d.casesPerCapita));
+    
+  /*d3.select("svg")
     .append("g")
     .attr("transform", "translate(50,50)")
     .selectAll("circle")
@@ -33,17 +70,28 @@ async function init() {
         var mpg = parseInt(d.AverageHighwayMPG);
         return 200-(mpg-10); 
       } )
-    .attr("r", function(d,i){ return parseInt(d.EngineCylinders)+2; } );
+    .attr("r", function(d,i){ return parseInt(d.EngineCylinders)+2; } );*/
+  
+  d3.select("svg")
+    .attr("viewBox", [0, 0, width, height])
+    .append("g")
+    .attr("transform", "translate("+heightMargin+","+widthMargin+")")
+    .call(d3.axisLeft(yCases).tickValues([10,100,500]).tickFormat(d3.format("~s")));
   
   d3.select("svg")
     .append("g")
-    .attr("transform", "translate("+margin+","+margin+")")
-    .call(d3.axisLeft(y).tickValues([10,20,50,100]).tickFormat(d3.format("~s")));
+    .attr("transform", "translate("+widthMargin+","+(height-heightMargin)+")")
+    .call(d3.axisBottom(x).ticks(width/60));
   
   d3.select("svg")
-    .append("g")
-    .attr("transform", "translate("+margin+",250)")
-    .call(d3.axisBottom(x).tickValues([10,20,50,100]).tickFormat(d3.format("~s")));
+    .append("path")
+    .datum(dataByCountry)
+    .attr("fill", "none")
+    .attr("stroke", "steelblue")
+    .attr("stroke-width", 1.5)
+    .attr("stroke-linejoin", "round")
+    .attr("stroke-linecap", "round")
+    .attr("d", deathLine);
 }
 </script>
 
