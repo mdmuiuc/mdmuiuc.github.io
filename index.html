@@ -22,7 +22,7 @@ async function init() {
   });
   const dataByCountry = d3.nest()
     .key(function(d) { return d.continent; })
-    .key(function(d) { return d.date; })
+    .key(function(d) { return d.date; }).sortKeys((a, b) => d3.isoParse(a) < d3.isoParse(b)? 1 : -1)
     .rollup(function(v) { return {
       cases: d3.sum(v, function(d) { return d.cases; }),
       deaths: d3.sum(v, function(d) { return d.deaths; }),
@@ -64,7 +64,6 @@ async function init() {
     .append("g")
     .attr("transform", "translate("+widthMargin+","+heightMargin+")")
     .attr("fill", "none")
-    .attr("stroke", "steelblue")
     .attr("stroke-width", 1)
     .attr("stroke-linejoin", "round")
     .attr("stroke-linecap", "round")
@@ -72,19 +71,9 @@ async function init() {
     .data(dataByCountry)
     .join("path")
     .style("mix-blend-mode", "multiply")
+    .attr("stroke", (d, i) => ["red", "green", "steelblue", "orange", "brown", "black"][i])
     .attr("d", d => line(d.values));
   
-  /*
-  d3.select("svg")
-    .append("path")
-    .datum(dataByCountry)
-    .attr("fill", "none")
-    .attr("stroke", "steelblue")
-    .attr("stroke-width", 1.5)
-    .attr("stroke-linejoin", "round")
-    .attr("stroke-linecap", "round")
-    .attr("d", caseLine);
-   */
    var a = "test";
 }
 </script>
