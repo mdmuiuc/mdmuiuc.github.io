@@ -5,9 +5,17 @@
 </head>
 <body onload='init()'>
 
-<svg>
+<div>
+    <input type="button" value="Cases" onclick="changeScene(0)"/>
+    <input type="button" value="Deaths" onclick="changeScene(1)"/>
+    <input type="button" value="Deaths Per 100,000 People" onclick="changeScene(2)"/>
+</div>
+<svg id="graph">
 </svg>
 <script>
+var x, yCases, yDeaths, yDeathsPerCapita, width, height, widthMargin, heightMargin, dataByCountry;
+var scene = 2;
+
 async function init() {
   const data = await d3.csv("https://raw.githubusercontent.com/mdmuiuc/mdmuiuc.github.io/master/covid_data.csv", function(d) {
     var dateParts = d.dateRep.split("/");
@@ -20,40 +28,66 @@ async function init() {
       population: d.popData2019
     };
   });
-  const dataByCountry = d3.nest()
-    .key(function(d) { return d.continent; })
+  dataByCountry = d3.nest()
+    .key(function(d) { return d.continent; }).sortKeys(d3.ascending)
     .key(function(d) { return d.date; }).sortKeys((a, b) => d3.isoParse(a) < d3.isoParse(b)? 1 : -1)
     .rollup(function(v) { return {
       cases: d3.sum(v, function(d) { return d.cases; }),
       deaths: d3.sum(v, function(d) { return d.deaths; }),
-      deathsPerCapita: d3.sum(v, function(d) { return d.deaths; })/
+      deathsPerCapita: 100000*d3.sum(v, function(d) { return d.deaths; })/
                        d3.sum(v, function(d) { return d.population; })
       }; 
     })
     .entries(data);
   
-  var width = window.innerWidth;
-  var height = window.innerHeight;
-  var widthMargin = 50;//.1*width;
-  var heightMargin = 50;//.1*height;
-  var x = d3.scaleUtc().domain(d3.extent(data, d => d.date)).range([0,width-2*widthMargin]);
+  width = window.innerWidth;
+  height = window.innerHeight;
+  widthMargin = .1*width;
+  heightMargin = .1*height;
   
-  var yCases = d3.scaleLinear().domain([0, 140000]).range([height-2*heightMargin,0]);
-  var yDeaths = d3.scaleLinear().domain([0, 500]).range([height-2*heightMargin,0]);
-  var yDeathsPerCapita = d3.scaleLinear().domain([0, 500]).range([height-2*widthMargin,0]);
+  x = d3.scaleUtc().domain(d3.extent(data, d => d.date)).range([0,width-2*widthMargin]);
   
+  yCases = d3.scaleLinear().domain([0, 140000]).range([height-2*heightMargin,0]);
+  yDeaths = d3.scaleLinear().domain([0, 6000]).range([height-2*heightMargin,0]);
+  yDeathsPerCapita = d3.scaleLinear().domain([0, 0.7]).range([height-2*heightMargin,0]);
+  
+  drawGraph();
+}
+
+function getYValue(country) {
+  if (scene == 0)
+    return yCases(country.value.cases);
+  if (scene == 1)
+    return yDeaths(country.value.deaths);
+  return yDeathsPerCapita(country.value.deathsPerCapita);
+}
+
+function getYAxis() {
+  if (scene == 0)
+    return yCases;
+  if (scene == 1)
+    return yDeaths;
+  return yDeathsPerCapita;
+}
+
+function changeScene(countryIndex) {
+  d3.selectAll("g").remove();
+  scene = countryIndex;
+  drawGraph();
+}
+
+function drawGraph() {
   line = d3.line()
-    //.defined(d => !isNaN(d))
     .x(d => x(d3.isoParse(d.key)))
-    .y(d => yCases(d.value.cases));
-  
-  var testy = line(dataByCountry[0].values);
-  
+    .y(d => getYValue(d));
+
+  yAxis = getYAxis();
+
   d3.select("svg")
     .attr("viewBox", [0, 0, width, height])
     .append("g")
-    .attr("transform", "translate("+heightMargin+","+widthMargin+")")
-    .call(d3.axisLeft(yCases).ticks(height/100).tickFormat(d3.format("~s")));
+    .attr("transform", "translate("+widthMargin+","+heightMargin+")")
+    .call(d3.axisLeft(yAxis).ticks(height/100));
   
   d3.select("svg")
     .append("g")
@@ -70,11 +104,8 @@ async function init() {
     .selectAll("path")
     .data(dataByCountry)
     .join("path")
-    .style("mix-blend-mode", "multiply")
     .attr("stroke", (d, i) => ["red", "green", "steelblue", "orange", "brown", "black"][i])
     .attr("d", d => line(d.values));
-  
-   var a = "test";
 }
 </script>
 
