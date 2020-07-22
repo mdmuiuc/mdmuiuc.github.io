@@ -17,7 +17,7 @@ async function init() {
       continent: d.continentExp,
       date: new Date(+dateParts[2], dateParts[1] - 1, +dateParts[0]),
       deaths: d.deaths,
-      population: d.population
+      population: d.popData2019
     };
   });
   const dataByCountry = d3.nest()
@@ -37,52 +37,44 @@ async function init() {
   var widthMargin = 50;//.1*width;
   var heightMargin = 50;//.1*height;
   var x = d3.scaleUtc().domain(d3.extent(data, d => d.date)).range([0,width-2*widthMargin]);
-  var yCases = d3.scaleLinear().domain([0, 500]).range([height-2*heightMargin,0]);
+  
+  var yCases = d3.scaleLinear().domain([0, 140000]).range([height-2*heightMargin,0]);
   var yDeaths = d3.scaleLinear().domain([0, 500]).range([height-2*heightMargin,0]);
   var yDeathsPerCapita = d3.scaleLinear().domain([0, 500]).range([height-2*widthMargin,0]);
   
-  var caseLine = d3.line()
-    .x(d => x(d.values.key))
-    .y(d => y(d.values.cases));
-    
-  var deathLine = d3.line()
-    .x(d => x(d.date))
-    .y(d => yDeaths(d.deaths));
-    
-  var casesPerCapitaLine = d3.line()
-    .x(d => x(d.date))
-    .y(d => yDeathsPerCapita(d.casesPerCapita));
-    
-  /*d3.select("svg")
-    .append("g")
-    .attr("transform", "translate(50,50)")
-    .selectAll("circle")
-    .data(data)
-    .enter()
-    .append("circle")
-    .attr("cx", function(d,i)
-      { 
-        var mpg = parseInt(d.AverageCityMPG);
-        return mpg-10; 
-      } )
-    .attr("cy", function(d,i)
-      {
-        var mpg = parseInt(d.AverageHighwayMPG);
-        return 200-(mpg-10); 
-      } )
-    .attr("r", function(d,i){ return parseInt(d.EngineCylinders)+2; } );*/
+  line = d3.line()
+    //.defined(d => !isNaN(d))
+    .x(d => x(d3.isoParse(d.key)))
+    .y(d => yCases(d.value.cases));
+  
+  var testy = line(dataByCountry[0].values);
   
   d3.select("svg")
     .attr("viewBox", [0, 0, width, height])
     .append("g")
     .attr("transform", "translate("+heightMargin+","+widthMargin+")")
-    .call(d3.axisLeft(yCases).tickValues([10,100,500]).tickFormat(d3.format("~s")));
+    .call(d3.axisLeft(yCases).ticks(height/100).tickFormat(d3.format("~s")));
   
   d3.select("svg")
     .append("g")
     .attr("transform", "translate("+widthMargin+","+(height-heightMargin)+")")
-    .call(d3.axisBottom(x).ticks(width/60));
+    .call(d3.axisBottom(x).ticks(width/100));
   
+  d3.select("svg")
+    .append("g")
+    .attr("transform", "translate("+widthMargin+","+heightMargin+")")
+    .attr("fill", "none")
+    .attr("stroke", "steelblue")
+    .attr("stroke-width", 1)
+    .attr("stroke-linejoin", "round")
+    .attr("stroke-linecap", "round")
+    .selectAll("path")
+    .data(dataByCountry)
+    .join("path")
+    .style("mix-blend-mode", "multiply")
+    .attr("d", d => line(d.values));
+  
+  /*
   d3.select("svg")
     .append("path")
     .datum(dataByCountry)
@@ -91,7 +83,9 @@ async function init() {
     .attr("stroke-width", 1.5)
     .attr("stroke-linejoin", "round")
     .attr("stroke-linecap", "round")
-    .attr("d", deathLine);
+    .attr("d", caseLine);
+   */
+   var a = "test";
 }
 </script>
 
