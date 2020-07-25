@@ -137,9 +137,10 @@ function hover(svg, lines) {
     const ym = y.invert(mouse[1]-heightMargin);
     const closestDate = getClosestDate(xm);
     const closestValue = getClosestValue(closestDate, ym);
+    const currentLabel = getCurrentLabel();
 
     dot.attr("transform", `translate(${x(closestDate)+widthMargin},${y(closestValue)+heightMargin})`);
-    dot.select("text").text(`${closestValue} cases on ${xm.toLocaleDateString("en-US")}`);
+    dot.select("text").text(`${closestValue} ${currentLabel} on ${closestDate.toLocaleDateString("en-US")}`);
   }
 
   function entered() {
@@ -152,8 +153,24 @@ function hover(svg, lines) {
 }
 
 function getClosestValue(xm, ym) {
-  const values = dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.cases);
+  const values = getCurrentValues(xm);
   return d3.least(values, d => Math.abs(d - ym));
+}
+
+function getCurrentLabel() {
+  if (scene == 0)
+    return "cases";
+  if (scene == 1)
+    return "deaths";
+  return "deaths per 100k people";
+}
+
+function getCurrentValues(xm) {
+  if (scene == 0)
+    return dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.cases);
+  if (scene == 1)
+    return dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.deaths);
+  return dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.deathsPerCapita);
 }
 
 function getClosestDate(xm) {
