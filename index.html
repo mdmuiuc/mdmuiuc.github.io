@@ -1,5 +1,6 @@
 <html>
 <script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://d3js.org/d3-array.v2.min.js"></script>
 <head>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 </head>
@@ -14,7 +15,7 @@
 </svg>
 <script>
 var x, yCases, yDeaths, yDeathsPerCapita, width, height, widthMargin, heightMargin, dataByCountry;
-var scene = 2;
+var scene = 0;
 
 async function init() {
   const data = await d3.csv("https://raw.githubusercontent.com/mdmuiuc/mdmuiuc.github.io/master/covid_data.csv", function(d) {
@@ -30,7 +31,7 @@ async function init() {
   });
   dataByCountry = d3.nest()
     .key(function(d) { return d.continent; }).sortKeys(d3.ascending)
-    .key(function(d) { return d.date; }).sortKeys((a, b) => d3.isoParse(a) < d3.isoParse(b)? 1 : -1)
+    .key(function(d) { return d.date; }).sortKeys((a, b) => d3.isoParse(a) < d3.isoParse(b)? -1 : 1)
     .rollup(function(v) { return {
       cases: d3.sum(v, function(d) { return d.cases; }),
       deaths: d3.sum(v, function(d) { return d.deaths; }),
@@ -94,7 +95,7 @@ function drawGraph() {
     .attr("transform", "translate("+widthMargin+","+(height-heightMargin)+")")
     .call(d3.axisBottom(x).ticks(width/100));
   
-  d3.select("svg")
+  const lines = d3.select("svg")
     .append("g")
     .attr("transform", "translate("+widthMargin+","+heightMargin+")")
     .attr("fill", "none")
@@ -106,6 +107,61 @@ function drawGraph() {
     .join("path")
     .attr("stroke", (d, i) => ["red", "green", "steelblue", "orange", "brown", "black"][i])
     .attr("d", d => line(d.values));
+    
+  d3.select("svg")
+    .call(hover, lines);
+}
+
+function hover(svg, lines) {
+  svg.on("mousemove", moved)
+    .on("mouseenter", entered)
+    .on("mouseleave", left);
+
+  const dot = svg.append("g")
+    .attr("display", "none");
+  
+  dot.append("circle")
+    .attr("r", 1.5);
+    
+  dot.append("text")
+      .attr("font-size", 9)
+      .attr("text-anchor", "middle")
+      .attr("y", -8);
+      
+  function moved() {
+    const y = getYAxis();
+    
+    d3.event.preventDefault();
+    const mouse = d3.mouse(this);
+    const xm = x.invert(mouse[0]-widthMargin);
+    const ym = y.invert(mouse[1]-heightMargin);
+    const closestDate = getClosestDate(xm);
+    const closestValue = getClosestValue(closestDate, ym);
+
+    dot.attr("transform", `translate(${x(closestDate)+widthMargin},${y(closestValue)+heightMargin})`);
+    dot.select("text").text(`${closestValue} cases on ${xm.toLocaleDateString("en-US")}`);
+  }
+
+  function entered() {
+    dot.attr("display", null);
+  }
+
+  function left() {
+    dot.attr("display", "none");
+  }
+}
+
+function getClosestValue(xm, ym) {
+  const values = dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.cases);
+  return d3.least(values, d => Math.abs(d - ym));
+}
+
+function getClosestDate(xm) {
+  const dates = dataByCountry[0].values.map(d => d3.isoParse(d.key));
+  const i1 = d3.bisectLeft(dates, xm, 1);
+  const i0 = i1 - 1;
+  const i = xm - dates[i0] > dates[i1] - xm? i1 : i0;
+  return dates[i];
 }
 </script>
 
