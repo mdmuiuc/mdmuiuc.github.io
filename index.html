@@ -14,8 +14,9 @@
 <svg id="graph">
 </svg>
 <script>
-var x, yCases, yDeaths, yDeathsPerCapita, width, height, widthMargin, heightMargin, dataByCountry;
+var x, yCases, yDeaths, yDeathsPerCapita, width, height, widthMargin, heightMargin, dataByContinent;
 var scene = 0;
+const colors = ["red", "green", "steelblue", "orange", "brown", "black"];
 
 async function init() {
   const data = await d3.csv("https://raw.githubusercontent.com/mdmuiuc/mdmuiuc.github.io/master/covid_data.csv", function(d) {
@@ -29,7 +30,7 @@ async function init() {
       population: d.popData2019
     };
   });
-  dataByCountry = d3.nest()
+  dataByContinent = d3.nest()
     .key(function(d) { return d.continent; }).sortKeys(d3.ascending)
     .key(function(d) { return d.date; }).sortKeys((a, b) => d3.isoParse(a) < d3.isoParse(b)? -1 : 1)
     .rollup(function(v) { return {
@@ -103,13 +104,21 @@ function drawGraph() {
     .attr("stroke-linejoin", "round")
     .attr("stroke-linecap", "round")
     .selectAll("path")
-    .data(dataByCountry)
+    .data(dataByContinent)
     .join("path")
-    .attr("stroke", (d, i) => ["red", "green", "steelblue", "orange", "brown", "black"][i])
+    .attr("stroke", (d, i) => colors[i])
     .attr("d", d => line(d.values));
     
   d3.select("svg")
     .call(hover, lines);
+    
+  for (var i = 0; i < dataByContinent.length; i++) {
+    d3.select("svg")
+      .append("g")
+      .append("text").text(dataByContinent[i].key)
+      .attr("transform", `translate(${width-widthMargin+5},${getCurrentAnnotationHeight(i)})`)
+      .style("fill", d => colors[i]);
+  }
 }
 
 function hover(svg, lines) {
@@ -124,7 +133,7 @@ function hover(svg, lines) {
     .attr("r", 1.5);
     
   dot.append("text")
-      .attr("font-size", 9)
+      .attr("font-size", 11)
       .attr("text-anchor", "middle")
       .attr("y", -8);
       
@@ -165,16 +174,27 @@ function getCurrentLabel() {
   return "deaths per 100k people";
 }
 
+function getCurrentAnnotationHeight(country) {
+  const y = getYAxis();
+  const yearIndex = dataByContinent[country].values.length-1;
+
+  if (scene == 0)
+    return y(dataByContinent[country].values[yearIndex].value.cases) + heightMargin;
+  if (scene == 1)
+    return y(dataByContinent[country].values[yearIndex].value.deaths) + heightMargin;
+  return y(dataByContinent[country].values[yearIndex].value.deathsPerCapita) + heightMargin;
+}
+
 function getCurrentValues(xm) {
   if (scene == 0)
-    return dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.cases);
+    return dataByContinent.map(country => country.values.find(cv => cv.key === xm.toString()).value.cases);
   if (scene == 1)
-    return dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.deaths);
-  return dataByCountry.map(country => country.values.find(cv => cv.key === xm.toString()).value.deathsPerCapita);
+    return dataByContinent.map(country => country.values.find(cv => cv.key === xm.toString()).value.deaths);
+  return dataByContinent.map(country => country.values.find(cv => cv.key === xm.toString()).value.deathsPerCapita);
 }
 
 function getClosestDate(xm) {
-  const dates = dataByCountry[0].values.map(d => d3.isoParse(d.key));
+  const dates = dataByContinent[0].values.map(d => d3.isoParse(d.key));
   const i1 = d3.bisectLeft(dates, xm, 1);
   const i0 = i1 - 1;
   const i = xm - dates[i0] > dates[i1] - xm? i1 : i0;
