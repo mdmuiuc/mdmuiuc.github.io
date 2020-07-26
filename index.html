@@ -107,7 +107,13 @@ function drawGraph() {
     .data(dataByContinent)
     .join("path")
     .attr("stroke", (d, i) => colors[i])
-    .attr("d", d => line(d.values));
+    .attr("stroke-dasharray", "0,1")
+    .attr("d", d => line(d.values))
+    .transition()
+    .ease(d3.easeLinear)
+    .attrTween("stroke-dasharray", dashTween)
+    .duration(3000)
+    .end();
     
   d3.select("svg")
     .call(hover, lines);
@@ -119,6 +125,11 @@ function drawGraph() {
       .attr("transform", `translate(${width-widthMargin+5},${getCurrentAnnotationHeight(i)})`)
       .style("fill", d => colors[i]);
   }
+}
+
+function dashTween() {
+  const length = this.getTotalLength();
+  return d3.interpolate(`0,${length}`, `${length},${length}`);
 }
 
 function hover(svg, lines) {
