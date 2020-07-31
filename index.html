@@ -6,6 +6,7 @@
 </head>
 <body onload='init()'>
 
+
 <div>
     <input type="button" value="Cases" onclick="changeScene(0)"/>
     <input type="button" value="Deaths" onclick="changeScene(1)"/>
@@ -56,6 +57,14 @@ async function init() {
   drawGraph();
 }
 
+function getSceneText() {
+  if (scene == 0)
+    return "COVID-19 Cases per Day";
+  if (scene == 1)
+    return "COVID-19 Deaths per Day";
+  return "COVID-19 Deaths per 100,000 People per Day";
+}
+
 function getYValue(country) {
   if (scene == 0)
     return yCases(country.value.cases);
@@ -79,6 +88,14 @@ function changeScene(countryIndex) {
 }
 
 function drawGraph() {
+  d3.select("#title").html = "";
+  
+  d3.select("svg")
+    .append("g")
+    .append("text").text(d => getSceneText())
+    .attr("font-size", "x-large")
+    .attr("transform", "translate("+(0.5*width-0.5*widthMargin)+",30)");
+
   line = d3.line()
     .x(d => x(d3.isoParse(d.key)))
     .y(d => getYValue(d));
