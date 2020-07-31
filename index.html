@@ -7,6 +7,7 @@
 <body onload='init()'>
 
 
+
 <div>
     <input type="button" value="Cases" onclick="changeScene(0)"/>
     <input type="button" value="Deaths" onclick="changeScene(1)"/>
@@ -88,13 +89,16 @@ function changeScene(countryIndex) {
 }
 
 function drawGraph() {
-  d3.select("#title").html = "";
-  
   d3.select("svg")
     .append("g")
     .append("text").text(d => getSceneText())
     .attr("font-size", "x-large")
     .attr("transform", "translate("+(0.5*width-0.5*widthMargin)+",30)");
+    
+  d3.select("svg")
+    .append("g")
+    .append("text").text(d => "Hover over the plot to see a tooltip with information for a given continent and day.")
+    .attr("transform", "translate("+(0.5*widthMargin)+","+(height-0.5*heightMargin)+")");
 
   line = d3.line()
     .x(d => x(d3.isoParse(d.key)))
